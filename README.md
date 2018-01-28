@@ -8,10 +8,13 @@ This is the first and only *individual* (as opposed to *team*) this semester.
 
 Term: Spring 2018
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
++ Projec title: The sentiment in the inauguration speech and the GDP growth rate 
++ This project is conducted by Yiran Jiang
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project summary: In this project, I conducted a Sentiment Analysis on each year's inauguration speech of the president, and formed a relation between the sentiment and the previous year's GDP growth rate using a Neural Network model. Although the relation is hard to interprete in detail due to the ambiguity of the Neural Network model, it is shown that there's somewhat a relation between the sentiment in the inauguration speech and the GDP growth rate.
+
+![image](figs/Graph.png)
+
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
