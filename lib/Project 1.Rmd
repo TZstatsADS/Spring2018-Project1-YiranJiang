@@ -9,11 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Step 0: check and install needed packages. Load the libraries and functions. 
 
 ```{r, message=FALSE, warning=FALSE}
 packages.used=c("qdap", "lattice", "grid", 
                 "sentimentr", "nnet", "dplyr",
-                "png", "ggplot","MASS", "devtools")
+                "png", "ggplot","MASS", "devtools","reshape")
 
 # check packages that need to be installed.
 packages.needed=setdiff(packages.used, 
@@ -34,10 +35,11 @@ library("devtools")
 library("png")
 library("dplyr")
 library("ggplot2")
-
+library("reshape")
 
 ```
 
+# Step 1: Data harvest: scrap speech URLs and load in the full text.
 
 
 ```{r}
@@ -45,11 +47,10 @@ library("ggplot2")
 source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
 
 main.page <- read_html(x = "http://www.presidency.ucsb.edu/inaugurals.php")
-# Get link URLs
-# f.speechlinks is a function for extracting links from the list of speeches. 
+
 inaug=f.speechlinks(main.page)
 inaug=inaug[-nrow(inaug),]
-inaug.list=read.csv("/Users/jiangyiran/Documents/GitHub/Spring2018-Project1-YiranJiang/data/inauglist.csv", stringsAsFactors = FALSE)
+inaug.list=read.csv("../data/inauglist.csv", stringsAsFactors = FALSE)
 
 inaug.list=cbind(inaug.list, inaug)
 
@@ -62,19 +63,24 @@ for(i in seq(nrow(inaug.list))) {
 
 }
 
+head(inaug.list)
 ```
 
+# Step 1: Data cleaning: read the GDP data and clean the data.
 
+We are going to load the GDP data over years while we only need those when president inauguration speech occurs.
 
 ```{r}
 
 date <- inaug.list$links 
-date <- substring(date,nchar(date)-3,nchar(date))
+date <- substring(date,nchar(date)-3,nchar(date)) # We only need the information of Years in the date.
 
-GDP <- read.csv("/Users/jiangyiran/Documents/GitHub/Spring2018-Project1-YiranJiang/data/GDP.csv")
+GDP <- read.csv("../data/GDP.csv")
 GDP <- rbind(c("1900",as.numeric(20.7)),GDP)
 colnames(GDP) <- c("Year","Growth")
 GDP$Growth <- as.numeric(GDP$Growth)
+
+# The data contains only the Total GDP, thus we should calculate the GDP growth rate.
 rate <- NULL
 for (i in 1:nrow(GDP)){
   if (i == 1){
@@ -84,21 +90,24 @@ for (i in 1:nrow(GDP)){
   rate <- c(rate,this.rate)
 }
 
+
 GDP$Growth_rate <- rate
 GDP <- GDP %>%
-  filter(GDP$Growth_rate, Year %in% date)
+  filter(GDP$Growth_rate, Year %in% date) # We only need the years when the inauguration speech occurs.
 
-NewGDP <- data.frame(rbind(c("2013",0,0.017),c("2017",0,0.026)))
+
+NewGDP <- data.frame(rbind(c("2013",0,0.017),c("2017",0,0.026))) # Add some recent data manually.
 colnames(NewGDP) <- c("Year","Growth","Growth_rate")
 GDP <- rbind(GDP,NewGDP)
 
+head(GDP)
 
 ```
 
+# Step 2: Sentiment analysis: analyze the sentiment in each inauguration speech.
+
 
 ```{r}
-
-
 
 emotions_per_year <- NULL
 for(i in 1:nrow(inaug.list)){
@@ -119,9 +128,8 @@ for(i in 1:nrow(inaug.list)){
                 surprise = mean(surprise,na.rm =TRUE),
                 trust = mean(trust,na.rm =TRUE),
                 negative = mean(negative,na.rm =TRUE),
-                positive = mean(positive,na.rm =TRUE))
-    emotions_per_year <- rbind(emotions_per_year,emotions)
-      
+                positive = mean(positive,na.rm =TRUE)) # summarise the sentiment data for every inauguration speech.
+    emotions_per_year <- rbind(emotions_per_year,emotions) 
   }
 }
 emotions_per_year$Year <- date
@@ -129,51 +137,64 @@ emotions_per_year$Year <- date
 emotions_per_year <- emotions_per_year %>%
   filter(emotions_per_year$anger, Year %in% GDP$Year)
 
+rownames(emotions_per_year) <- emotions_per_year$Year
+emotions_per_year$Year <- NULL
 
+head(emotions_per_year)
+
+heatmap(as.matrix(emotions_per_year,scale = "column")) # This is the visualization of our result.
 ```
 
 
+# Step 3: Neural Network training: Train a Neural Network using BP to fit the GDP data.
+
+Train a Neural Network using BP algorithm. We are going to fit the GDP data with the summarised sentiment data.
 
 ```{r}
+set.seed(123)
 
-norm.data <- scale(emotions_per_year[,1:10]) 
+norm.data <- scale(emotions_per_year[,1:10]) # Scale the data.
 
 GDP_Growth <- as.numeric(GDP$Growth_rate)
 
-set.seed(123)
-
 sample <- sample(1:30,30)
 
-New_Growth <- GDP_Growth[sample]
-New.data <- norm.data[sample,]
+GDP_New <- GDP_Growth[sample]
+New.data <- norm.data[sample,] # Divide the data into test set and training set.
 
-nn <- nnet(New_Growth[1:24]~., New.data[1:24,], size = 10 , 
+GDP_nn <- nnet(GDP_New[1:24]~., New.data[1:24,], size = 10 , 
            decay = 0.01, maxit = 1000, linout = T, trace = F) 
 
 prediction <- predict(nn, norm.data)
-
-
-```
-
-
-```{r}
-plot.nnet(nn)
+head(prediction)
 
 ```
 
+We could also visualize our trained Neural Network.
+
+The I1~I10 represents 10 inputs nodes, the H1~H10 represents 10 nodes in the hidden layer and B1~B2 are the bias nodes. O1 is the output node, which is the GDP.
+
+```{r}
+plot.nnet(GDP_nn)
+
+```
+
+# Step 4: Model assessment.
+
+Actually, we should have used more model assessment techniques. while for this project, we only need a breif view of our prediction result.
 
 
 ```{r}
 
-
-img <- readPNG('/Users/jiangyiran/Documents/GitHub/Spring2018-Project1-YiranJiang/figs/Trump.png')
+img <- readPNG('../figs/Trump.png')
 
 ggplot(data = predictdata)+
   annotation_custom(rasterGrob(img, width=unit(1,"npc"), height=unit(1,"npc")), 
                     -Inf, Inf, -Inf, Inf) +
   geom_line(mapping = aes(x = newdate, y = prediction,colour = 'red'),size=1.5)+
   geom_line(mapping = aes(x = newdate, y = GDP_Growth,colour = 'black'),size=1.5)+
-  scale_color_discrete(name = "Meaning", labels = c("Prediction Line", "Real Line"))+
+  
+  scale_color_discrete(name = "GDP Growth Trend", labels = c("Real Line", "Prediction Line"))+
   geom_point(data = subset(predictdata, newdate %in% predictyear),
              mapping = aes(x = newdate , y = prediction),
              col = 'blue', shape = 8 )+
@@ -185,5 +206,4 @@ ggplot(data = predictdata)+
 
 
 ```
-
-
+Note: the mark * denotes the years which are predicted by our model and are not in our training set.
