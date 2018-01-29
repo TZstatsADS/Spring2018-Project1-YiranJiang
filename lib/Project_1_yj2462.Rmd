@@ -7,15 +7,25 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 # Step 0: check and install needed packages. Load the libraries and functions. 
 
 ```{r, message=FALSE, warning=FALSE}
+packages.used=c("qdap", "lattice", "grid", 
+                "sentimentr", "nnet", "dplyr",
+                "png", "ggplot","MASS", "devtools","reshape")
 
-library("syuzhet")
-library("rvest")
-library("rJava")
+# check packages that need to be installed.
+packages.needed=setdiff(packages.used, 
+                        intersect(installed.packages()[,1], 
+                                  packages.used))
+# install additional packages
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE)
+}
+
 library("qdap")
 library("sentimentr")
 library("lattice")
@@ -28,8 +38,6 @@ library("dplyr")
 library("ggplot2")
 library("reshape")
 
-source("../lib/plotstacked.R")
-source("../lib/speechFuncs.R")
 ```
 
 # Step 1: Data harvest: scrap speech URLs and load in the full text.
@@ -57,9 +65,10 @@ for(i in seq(nrow(inaug.list))) {
 
 }
 
+head(inaug.list)
 ```
 
-# Step 2: Data cleaning: read the GDP data and clean the data.
+# Step 1: Data cleaning: read the GDP data and clean the data.
 
 We are going to load the GDP data over years while we only need those when president inauguration speech occurs.
 
@@ -97,7 +106,7 @@ head(GDP)
 
 ```
 
-# Step 3: Sentiment analysis: analyze the sentiment in each inauguration speech.
+# Step 2: Sentiment analysis: analyze the sentiment in each inauguration speech.
 
 ```{r}
 
@@ -136,13 +145,10 @@ head(emotions_per_year)
 
 heatmap(as.matrix(emotions_per_year,scale = "column")) # This is the visualization of our result.
 ```
+This Heatmap shows a breif pattern of how the sentiment in the inauguration speech over years are clustered together.
 
 
-
-***Note:*** This Heatmap shows a breif pattern of how the sentiment in the inauguration speech over years are clustered together.
-
-
-# Step 4: Neural Network training: Train a Neural Network using BP to fit the GDP data.
+# Step 3: Neural Network training: Train a Neural Network using BP to fit the GDP data.
 
 Train a Neural Network using BP algorithm. We are going to fit the GDP data with the summarised sentiment data.
 
@@ -161,25 +167,21 @@ New.data <- norm.data[sample,] # Divide the data into test set and training set.
 GDP_nn <- nnet(GDP_New[1:24]~., New.data[1:24,], size = 10 , 
            decay = 0.01, maxit = 1000, linout = T, trace = F) 
 
-prediction <- predict(GDP_nn, norm.data)
+prediction <- predict(nn, norm.data)
 head(prediction) # the prediction value of GDP using our mnodel.
 
 ```
 
 We could also visualize our trained Neural Network.
 
+The I1~I10 represents 10 inputs nodes, the H1~H10 represents 10 nodes in the hidden layer and B1~B2 are the bias nodes. O1 is the output node, which is the GDP.
+
 ```{r}
 plot.nnet(GDP_nn)
 
 ```
 
-
-
-***Note:*** The I1~I10 represents 10 inputs nodes, the H1~H10 represents 10 nodes in the hidden layer and B1~B2 are the bias nodes. O1 is the output node, which is the GDP.
-
-
-
-# Step 5: Model assessment.
+# Step 4: Model assessment.
 
 Actually, we should have used more model assessment techniques. While for this project, we only need a breif view of our prediction result.
 
@@ -187,9 +189,6 @@ Actually, we should have used more model assessment techniques. While for this p
 ```{r}
 
 img <- readPNG('../figs/Trump.png')
-newdate <- seq(1901,2017,by=4)
-predictdata <- data.frame(prediction,GDP_Growth,newdate)
-predictyear <- newdate[sample][25:30]
 
 ggplot(data = predictdata)+
   annotation_custom(rasterGrob(img, width=unit(1,"npc"), height=unit(1,"npc")), 
@@ -209,17 +208,12 @@ ggplot(data = predictdata)+
 
 
 ```
-
-
-***Note:*** the star mark in the graph denotes the years which are predicted by our model and are not in our training set.
+***Note:***  the star mark in the graph denotes the years which are predicted by our model and are not in our training set.
 
 ------------------------
+From the result, we could see that our model predicts quite well the GDP Growth in each year, despite some "overestimate" in some years. 
 
-# Conclusion
-
-From the result, we could see that our model predicts quite well the GDP Growth in each year, despite some "overestimations". 
-
-One intresting result is that our model successfully predicted the pit of GDP Growth in the year 2009, the second year after the global financial crises happened. This suggests that in the inauguration speech, the president could somewhat mentioned such trend by conducting certain sentiments in the speech.
+One intresting result is that our model successfully predicted the pit of GDP Growth in the year 2009, the year after the global financial crises happened. This suggests that in the inauguration speech, the president could somewhat mentioned such trend by conducting certain sentiments in the speech.
 
 Intuitively, the finding of our model is easy to interprete since after suffering from a reccession in economics, the president need to gain confidence from the people by conducting sentiments such as trust and anticipation.
 
