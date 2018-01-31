@@ -2,7 +2,8 @@
 title: "Project 1- The sentiment in the inauguration speech and the GDP growth rate"
 author: "yj2462"
 date: "2018/1/27"
-output: html_notebook
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -12,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Step 0: check and install needed packages. Load the libraries and functions. 
 
 ```{r, message=FALSE, warning=FALSE}
+
 packages.used=c("qdap", "lattice", "grid", 
                 "sentimentr", "nnet", "dplyr",
                 "png", "ggplot2","MASS", "devtools",
